@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 
 from utils import model_to_vector, vector_to_model
 
+
 def train_local_model(
         global_model: nn.Module,
         dataloader: DataLoader,
@@ -93,7 +94,8 @@ def run_federated_round(global_model: nn.Module,
                         aggregator: Callable[
                             [torch.tensor],
                             torch.tensor
-                        ]):
+                        ],
+                        attack):
     
     previous_global_vector = model_to_vector(global_model)
 
@@ -118,18 +120,27 @@ def run_federated_round(global_model: nn.Module,
 
     benign_updates_tensor = torch.stack(benign_updates, dim=0)
 
-    # malicious_client_ids = [id for id in selected_clients if id in malicious_clients]
-    # malicious_updates_tensor = benign_updates_tensor.new_ones(
-    #     (len(malicious_client_ids), *benign_updates[0].shape)
-    # ) # use torch.ones as a place holder now for attacks 
+    malicious_client_ids = [
+        client_id
+        for client_id in selected_clients
+        if client_id in malicious_clients
+    ]
+    num_malicious_client = len(malicious_client_ids)
 
-    submited_updates = torch.cat([
-        benign_updates_tensor, 
-        # malicious_updates_tensor
-    ])
+    if attack is not None and num_malicious_client > 0:
+        malicious_update_tensor = attack.generate(
+            benign_updates_tensor,
+            num_malicious_client
+        )
+        submitted_updates = torch.cat([
+            benign_updates_tensor,
+            malicious_update_tensor
+        ])
+    else:
+        submitted_updates = benign_updates_tensor
 
     aggregated_updates = aggregator(
-        submited_updates
+        submitted_updates
     )
 
     new_global_vector = (previous_global_vector + aggregated_updates) #??? 為什麼這裡可以直接相加在一個 set 內
@@ -143,5 +154,5 @@ def run_federated_round(global_model: nn.Module,
     return {
         "global_update_norm": float(aggregated_updates.norm()),
         "num_benign_clients": len(benign_client_ids),
-        # "num_malicious_clients": len(malicious_client_ids)
+        "num_malicious_clients": len(malicious_client_ids)
     }

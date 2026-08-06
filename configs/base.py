@@ -24,5 +24,7 @@ class Config:
     attack_name: str | None = None
     attack_optimizer_name: str | None = None
 
-    aggregator = "fed_avg"
+    aggregator : str = "fed_avg"
 
+    partition: str = "iid"
+    shards_per_client: int = 2
