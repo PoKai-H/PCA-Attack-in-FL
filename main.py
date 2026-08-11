@@ -32,6 +32,24 @@ def run_federated_experiment(
     aggregator = build_aggregator(config, num_of_malicious_clients)
     attack = build_attack(config)
 
+    # zero round accuracy check
+    _, zero_round_accuracy = evaluate_model(global_model, test_loader, device)
+    log_row = {
+        "round": 0,
+        "malicious_clients": "",
+        "global_update_norm": "",
+        "test_loss": "",
+        "test_accuracy": zero_round_accuracy,
+
+    }
+    append_csv(config.output_csv, row=log_row)
+
+    print(
+            f"[Federated] "
+            f"round={0:03d} "
+            f"accuracy={zero_round_accuracy:.4f} "
+    )
+
     for round_index in range(config.communication_rounds):
         round_result = run_federated_round(
             global_model,
@@ -67,6 +85,16 @@ def run_federated_experiment(
             f"accuracy={test_accuracy:.4f} "
             f"malicious_clients={round_result['num_malicious_clients']}"
         )
+    append_csv(
+        config.output_csv,
+        row={
+            "round": "####",
+            "malicious_clients": "####",
+            "global_update_norm": "####",
+            "test_loss": "####",
+            "test_accuracy": "####",
+        }
+    )
 
 def build_aggregator(config: Config, num_malicious_clients: int):
     registry = {
