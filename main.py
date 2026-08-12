@@ -11,7 +11,7 @@ import random
 from utils import append_csv, set_seed, get_device
 from federated import run_federated_round, evaluate_model
 from data import load_mnist, iid_partition, build_client_loader, non_iid_partition
-
+from sampling import select_stratified_clients, count_malicious_clients, validate_aggregator_round
 from aggregators import coordinate_wise_median, fed_avg, krum
 from attacks import OnesAttack, MinMax, MinSum
 
@@ -27,9 +27,7 @@ def run_federated_experiment(
 
     num_of_malicious_clients = round(config.num_clients *( config.malicious_fractions))
     malicious_clients = list(range(num_of_malicious_clients))
-    selected_clients = list(random.sample(range(config.num_clients), k=config.clients_per_round))
 
-    aggregator = build_aggregator(config, num_of_malicious_clients)
     attack = build_attack(config)
 
     # zero round accuracy check
@@ -51,6 +49,18 @@ def run_federated_experiment(
     )
 
     for round_index in range(config.communication_rounds):
+        selected_clients = select_stratified_clients(config, malicious_clients)
+        num_selected_malicious_clients = count_malicious_clients(
+            selected_clients,
+            malicious_clients
+        )
+        validate_aggregator_round(
+            config,
+            selected_clients,
+            num_selected_malicious_clients
+        )
+        aggregator = build_aggregator(config, num_selected_malicious_clients)
+
         round_result = run_federated_round(
             global_model,
             selected_clients,
