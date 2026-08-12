@@ -61,7 +61,8 @@ def run_federated_experiment(
             config.learning_rate,
             config.momentum,
             aggregator,
-            attack
+            attack,
+            config.include_nnm
         )
 
         test_loss, test_accuracy = evaluate_model(global_model, test_loader, device)

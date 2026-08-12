@@ -48,6 +48,15 @@ class KrumNonIIDOnes(Config):
     malicious_fractions: float = 0.2
 
 @dataclass
+class KrumNonIIDOnesNNM(Config):
+    output_csv: str = "./results/krum_noniid_ones_nnm.csv"
+    attack_name: str | None = "ones"
+    aggregator: str = "krum"
+    partition: str = "non_iid"
+    malicious_fractions: float = 0.2
+    include_nnm: bool = True
+
+@dataclass
 class MedianNonIIDOnes(Config):
     output_csv: str = "./results/median_noniid_ones.csv"
     attack_name: str | None = "ones"
@@ -72,6 +81,8 @@ class MedianNonIIDMinSum(Config):
     malicious_fractions: float = 0.2
 
 
+
+
 CONFIGS = {
     "fedavg_iid": FedAvgIID,
     "fedavg_noniid": FedAvgNonIID,
@@ -80,7 +91,9 @@ CONFIGS = {
     "krum_iid_ones": KrumIIDOnes,
     "krum_noniid": KrumNonIID,
     "krum_noniid_ones": KrumNonIIDOnes,
+    "krum_noniid_ones_nnm": KrumNonIIDOnesNNM,
     "median_noniid_ones": MedianNonIIDOnes,
     "median_noniid_min_max": MedianNonIIDMinMax,
-    "median_noniid_min_sum": MedianNonIIDMinSum
+    "median_noniid_min_sum": MedianNonIIDMinSum,
+
 }

@@ -41,22 +41,34 @@ def krum(updates: torch.Tensor, malicious_clients: int) -> torch.Tensor:
         raise ValueError(f"Krum requires n > 2 * malicious_clients + 2, but got n={n}, malicious_clients={malicious_clients}.")
 
     num_neighbors = n - malicious_clients - 2
-    scores = []
+    # scores = []
 
-    for candidate_index, candidate in enumerate(updates):
-        distances = []
+    # for candidate_index, candidate in enumerate(updates):
+    #     distances = []
 
-        for other_index, other in enumerate(updates):
-            if candidate_index == other_index:
-                continue
+    #     for other_index, other in enumerate(updates):
+    #         if candidate_index == other_index:
+    #             continue
 
-            distances.append(torch.sum((candidate - other) ** 2))
+    #         distances.append(torch.sum((candidate - other) ** 2))
 
-        nearest_distance = torch.stack(distances).sort().values[:num_neighbors]
-        scores.append(nearest_distance.sum())
+    #     nearest_distance = torch.stack(distances).sort().values[:num_neighbors]
+    #     scores.append(nearest_distance.sum())
 
-    best_index = torch.stack(scores).argmin()
+    # best_index = torch.stack(scores).argmin()
     
+    distances = torch.cdist(updates, updates, p=2).pow(2)
+
+    # Exclude candidate itself
+    distances.fill_diagonal_(float("inf"))
+
+    nearest_distances = torch.topk(distances, k=num_neighbors, dim=1, largest=False).values
+
+    #Krum score
+    scores = nearest_distances.sum(dim=1)
+
+    best_index= scores.argmin()
+
     return updates[best_index]
 
 

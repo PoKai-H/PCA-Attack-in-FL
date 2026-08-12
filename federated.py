@@ -6,7 +6,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from utils import model_to_vector, vector_to_model
-
+from preprocessing import nearest_neighbor_mixxing
 
 def train_local_model(
         global_model: nn.Module,
@@ -95,7 +95,8 @@ def run_federated_round(global_model: nn.Module,
                             [torch.tensor],
                             torch.tensor
                         ],
-                        attack):
+                        attack,
+                        include_nnm: bool):
     
     previous_global_vector = model_to_vector(global_model)
 
@@ -138,7 +139,9 @@ def run_federated_round(global_model: nn.Module,
         ])
     else:
         submitted_updates = benign_updates_tensor
-
+    # TODO: add nnm perprocessing here
+    if include_nnm:
+        submitted_updates = nearest_neighbor_mixxing(submitted_updates, num_malicious_client)
     aggregated_updates = aggregator(
         submitted_updates
     )

@@ -28,3 +28,5 @@ class Config:
 
     partition: str = "iid"
     shards_per_client: int = 2
+
+    include_nnm: bool = False
