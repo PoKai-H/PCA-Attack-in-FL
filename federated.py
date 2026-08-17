@@ -8,21 +8,20 @@ from torch.utils.data import DataLoader
 from utils import model_to_vector, vector_to_model
 from preprocessing import nearest_neighbor_mixxing
 
+
 def train_local_model(
-        global_model: nn.Module,
-        dataloader: DataLoader,
-        device: torch.device,
-        local_epochs: int,
-        learning_rate: float,
-        momentum: float
+    global_model: nn.Module,
+    dataloader: DataLoader,
+    device: torch.device,
+    local_epochs: int,
+    learning_rate: float,
+    momentum: float,
 ) -> torch.Tensor:
     local_model = deepcopy(global_model).to(device)
     local_model.train()
 
     optimizer = torch.optim.SGD(
-        local_model.parameters(),
-        lr = learning_rate,
-        momentum=momentum
+        local_model.parameters(), lr=learning_rate, momentum=momentum
     )
 
     criterion = nn.CrossEntropyLoss()
@@ -47,12 +46,13 @@ def train_local_model(
 
     return model_update
 
-def evaluate_model(model: nn.Module, dataloader: DataLoader, device: torch.device) -> tuple[float, float]:
+
+def evaluate_model(
+    model: nn.Module, dataloader: DataLoader, device: torch.device
+) -> tuple[float, float]:
     model.eval()
 
-    criterion = nn.CrossEntropyLoss(
-        reduction="sum" #?
-    )
+    criterion = nn.CrossEntropyLoss(reduction="sum")  # ?
 
     total_loss = 0.0
     total_correct = 0
@@ -72,32 +72,30 @@ def evaluate_model(model: nn.Module, dataloader: DataLoader, device: torch.devic
 
             prediction = logits.argmax(dim=1)
 
-            total_correct += (
-                prediction == labels
-            ).sum().item()
+            total_correct += (prediction == labels).sum().item()
 
-            total_examples += labels.numel() #??
+            total_examples += labels.numel()  # ??
 
     average_loss = total_loss / total_examples
     accuracy = total_correct / total_examples
 
     return average_loss, accuracy
 
-def run_federated_round(global_model: nn.Module, 
-                        selected_clients: list, 
-                        malicious_clients: list,
-                        client_loaders: Dict[int, DataLoader],
-                        device: torch.device,
-                        local_epochs: int,
-                        learning_rate: float,
-                        momentum: float,
-                        aggregator: Callable[
-                            [torch.tensor],
-                            torch.tensor
-                        ],
-                        attack,
-                        include_nnm: bool):
-    
+
+def run_federated_round(
+    global_model: nn.Module,
+    selected_clients: list,
+    malicious_clients: list,
+    client_loaders: Dict[int, DataLoader],
+    device: torch.device,
+    local_epochs: int,
+    learning_rate: float,
+    momentum: float,
+    aggregator: Callable[[torch.tensor], torch.tensor],
+    attack,
+    include_nnm: bool,
+):
+
     previous_global_vector = model_to_vector(global_model)
 
     benign_client_ids = [id for id in selected_clients if id not in malicious_clients]
@@ -114,7 +112,7 @@ def run_federated_round(global_model: nn.Module,
             device=device,
             local_epochs=local_epochs,
             learning_rate=learning_rate,
-            momentum=momentum
+            momentum=momentum,
         )
 
         benign_updates.append(client_update)
@@ -122,40 +120,32 @@ def run_federated_round(global_model: nn.Module,
     benign_updates_tensor = torch.stack(benign_updates, dim=0)
 
     malicious_client_ids = [
-        client_id
-        for client_id in selected_clients
-        if client_id in malicious_clients
+        client_id for client_id in selected_clients if client_id in malicious_clients
     ]
     num_malicious_client = len(malicious_client_ids)
 
     if attack is not None and num_malicious_client > 0:
         malicious_update_tensor = attack.generate(
-            benign_updates_tensor,
-            num_malicious_client
+            benign_updates_tensor, num_malicious_client, aggregator, global_model
         )
-        submitted_updates = torch.cat([
-            benign_updates_tensor,
-            malicious_update_tensor
-        ])
+        submitted_updates = torch.cat([benign_updates_tensor, malicious_update_tensor])
     else:
         submitted_updates = benign_updates_tensor
     # TODO: add nnm perprocessing here
     if include_nnm:
-        submitted_updates = nearest_neighbor_mixxing(submitted_updates, num_malicious_client)
-    aggregated_updates = aggregator(
-        submitted_updates
-    )
+        submitted_updates = nearest_neighbor_mixxing(
+            submitted_updates, num_malicious_client
+        )
+    aggregated_updates = aggregator(submitted_updates)
 
-    new_global_vector = (previous_global_vector + aggregated_updates) #??? 為什麼這裡可以直接相加在一個 set 內
+    new_global_vector = (
+        previous_global_vector + aggregated_updates
+    )  # ??? 為什麼這裡可以直接相加在一個 set 內
 
-    vector_to_model(
-        new_global_vector,
-        global_model
-
-    )
+    vector_to_model(new_global_vector, global_model)
 
     return {
         "global_update_norm": float(aggregated_updates.norm()),
         "num_benign_clients": len(benign_client_ids),
-        "num_malicious_clients": len(malicious_client_ids)
+        "num_malicious_clients": len(malicious_client_ids),
     }

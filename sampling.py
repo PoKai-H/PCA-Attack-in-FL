@@ -24,7 +24,7 @@ def select_stratified_clients(
         if client_id not in malicious_client_set
     ]
 
-    num_selected_malicious_clients = round(
+    num_selected_malicious_clients = int(
         config.clients_per_round * config.malicious_fractions
     )
     num_selected_malicious_clients = min(
@@ -77,12 +77,23 @@ def validate_aggregator_round(
     selected_clients: list[int],
     num_malicious_clients: int,
 ) -> None:
-    if config.aggregator != "krum":
+    if config.aggregator == "bulyan":
+        if len(selected_clients) < 4 * num_malicious_clients + 3:
+            raise ValueError(
+                "Bulyan requires selected_clients >= "
+                "4 * malicious_clients + 3 for each round, "
+                f"but got selected_clients={len(selected_clients)}, "
+                f"malicious_clients={num_malicious_clients}."
+            )
+        return
+
+    if config.aggregator not in {"krum", "multi_krum"}:
         return
 
     if len(selected_clients) <= 2 * num_malicious_clients + 2:
         raise ValueError(
-            "Krum requires selected_clients > 2 * malicious_clients + 2 "
+            f"{config.aggregator} requires selected_clients > "
+            "2 * malicious_clients + 2 "
             f"for each round, but got selected_clients={len(selected_clients)}, "
             f"malicious_clients={num_malicious_clients}."
         )

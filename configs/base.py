@@ -23,6 +23,12 @@ class Config:
 
     attack_name: str | None = None
     attack_optimizer_name: str | None = None
+    alie_num_std: float = 1.0
+    sign_flip_scale: float = 1.0
+    pca_top_k: int = 3
+    pca_noise_dims: int = 3
+    pca_noise_distribution: str = "low_eigenvalue"
+    pca_noise_scale: float = 1e-3
 
     aggregator : str = "fed_avg"
 
