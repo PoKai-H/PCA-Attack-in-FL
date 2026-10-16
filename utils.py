@@ -6,6 +6,7 @@ import numpy as np
 import torch
 from torch import nn
 
+
 def set_seed(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
@@ -14,14 +15,17 @@ def set_seed(seed: int) -> None:
     if torch.manual_seed(seed):
         torch.cuda.manual_seed_all(seed)
 
+
 def get_device() -> torch.device:
     if torch.cuda.is_available():
         return torch.device("cuda")
 
     if torch.backends.mps.is_available():
+        print("using mps")
         return torch.device("mps")
 
     return torch.device("cpu")
+
 
 def model_to_vector(model: nn.Module) -> torch.Tensor:
     parameters = [
@@ -30,6 +34,7 @@ def model_to_vector(model: nn.Module) -> torch.Tensor:
 
     return torch.cat(parameters)
 
+
 def vector_to_model(vector: torch.Tensor, model: nn.Module):
     offset = 0
 
@@ -37,7 +42,7 @@ def vector_to_model(vector: torch.Tensor, model: nn.Module):
         for param in model.parameters():
             number_of_elements = param.numel()
 
-            param_vector = vector[offset: offset + number_of_elements]
+            param_vector = vector[offset : offset + number_of_elements]
 
             param_vector = param_vector.view_as(param)
 
@@ -45,14 +50,15 @@ def vector_to_model(vector: torch.Tensor, model: nn.Module):
 
             offset += number_of_elements
 
-    if offset !=vector.numel():
+    if offset != vector.numel():
         raise ValueError("The vector length does not match the model parameter count")
+
 
 def append_csv(path: str, row: dict) -> None:
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    should_write_header = not output_path.exists()
+    should_write_header = not output_path.exists() or output_path.stat().st_size == 0
 
     with output_path.open(mode="a", newline="", encoding="utf-8") as file:
         writer = csv.DictWriter(file, fieldnames=list(row.keys()))
@@ -61,3 +67,9 @@ def append_csv(path: str, row: dict) -> None:
             writer.writeheader()
 
         writer.writerow(row)
+
+
+def reset_csv(path: str) -> None:
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.unlink(missing_ok=True)

@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
 import torch
+from preprocessing import apply_nnm_with_contributions
 
 
 class Attack(ABC):
@@ -10,6 +11,7 @@ class Attack(ABC):
         benign_updates: torch.Tensor,
         num_malicious_clients: int,
         aggregator=None,
+        clean_aggregator=None,
         global_model=None,
     ) -> torch.Tensor:
         pass
@@ -21,6 +23,7 @@ class OnesAttack(Attack):
         benign_updates: torch.Tensor,
         num_malicious_clients: int,
         aggregator=None,
+        clean_aggregator=None,
         global_model=None,
     ) -> torch.Tensor:
         return benign_updates.new_ones((num_malicious_clients, benign_updates.shape[1]))
@@ -32,6 +35,7 @@ class MinMax(Attack):
         benign_updates: torch.Tensor,
         num_malicious_clients: int,
         aggregator=None,
+        clean_aggregator=None,
         global_model=None,
     ) -> torch.Tensor:
         benign_mean = benign_updates.mean(dim=0)
@@ -72,6 +76,7 @@ class MinSum(Attack):
         benign_updates: torch.Tensor,
         num_malicious_clients: int,
         aggregator=None,
+        clean_aggregator=None,
         global_model=None,
     ) -> torch.Tensor:
         benign_mean = benign_updates.mean(dim=0)
@@ -110,8 +115,8 @@ class MinSum(Attack):
 
 
 class ALIE(Attack):
-    def __init__(self, num_std: float):
-        self.num_std = num_std
+    def __init__(self, z: float):
+        self.z = z
         self.grads_mean = None
         self.grads_stdev = None
 
@@ -120,18 +125,21 @@ class ALIE(Attack):
         benign_updates: torch.Tensor,
         num_malicious_clients: int,
         aggregator=None,
+        clean_aggregator=None,
         global_model=None,
     ) -> torch.Tensor:
         self.grads_mean = benign_updates.mean(dim=0)
         self.grads_stdev = benign_updates.var(dim=0, unbiased=False).sqrt()
 
-        malicious_update = self.grads_mean - self.num_std * self.grads_stdev
+        malicious_update = self.grads_mean - self.z * self.grads_stdev
         return malicious_update.unsqueeze(0).repeat(num_malicious_clients, 1)
 
 
 class ALIEOptim(Attack):
-    def __init__(self, num_std: float):
-        self.num_std = num_std
+    def __init__(self, z_step: float, z_max: float, include_nnm: bool):
+        self.z_step = z_step
+        self.z_max = z_max
+        self.include_nnm = include_nnm
         self.grads_mean = None
         self.grads_stdev = None
 
@@ -140,29 +148,43 @@ class ALIEOptim(Attack):
         benign_updates: torch.Tensor,
         num_malicious_clients: int,
         aggregator=None,
+        clean_aggregator=None,
         global_model=None,
     ) -> torch.Tensor:
         if aggregator is None:
             raise ValueError("ALIEOptim requires an aggregator.")
+        if clean_aggregator is None:
+            clean_aggregator = aggregator
 
         self.grads_mean = benign_updates.mean(dim=0)
         self.grads_stdev = benign_updates.var(dim=0, unbiased=False).sqrt()
 
-        if self.num_std == 0:
-            malicious_update = self.grads_mean
-            return malicious_update.unsqueeze(0).repeat(num_malicious_clients, 1)
+        if self.z_step <= 0:
+            raise ValueError("z_step must be positive.")
 
-        step = 0.25 * self.num_std
+        if self.z_max < self.z_step:
+            raise ValueError("z_max must be >= z_step.")
+
         z_values = torch.arange(
-            step,
-            2.0 + 1e-12,
-            step,
+            self.z_step,
+            self.z_max + 1e-12,
+            self.z_step,
             device=benign_updates.device,
             dtype=benign_updates.dtype,
         )
 
         max_dist = benign_updates.new_tensor(-1.0)
-        best_z = benign_updates.new_tensor(self.num_std)
+        best_z = None
+
+        # if self.include_nnm:
+        #     clean_updates, _ = apply_nnm_with_contributions(
+        #         benign_updates,
+        #         num_malicious_clients,
+        #     )
+        # else:
+        #     clean_updates = benign_updates
+
+        # clean_aggregated_update = clean_aggregator(clean_updates)
 
         for z in z_values:
             malicious_update = self.grads_mean - z * self.grads_stdev
@@ -173,14 +195,22 @@ class ALIEOptim(Attack):
                 ],
                 dim=0,
             )
+
+            if self.include_nnm:
+                submitted_updates, _ = apply_nnm_with_contributions(
+                    submitted_updates, num_malicious_clients
+                )
             aggregated_update = aggregator(submitted_updates)
+
             dist = torch.linalg.norm(aggregated_update - self.grads_mean)
 
             if dist > max_dist:
                 max_dist = dist
                 best_z = z
 
+        # malicious_update = clean_aggregated_update - best_z * clean_updates.var().sqrt()
         malicious_update = self.grads_mean - best_z * self.grads_stdev
+        print(best_z)
         return malicious_update.unsqueeze(0).repeat(num_malicious_clients, 1)
 
 
@@ -193,6 +223,7 @@ class SignFlip(Attack):
         benign_updates: torch.Tensor,
         num_malicious_clients: int,
         aggregator=None,
+        clean_aggregator=None,
         global_model=None,
     ) -> torch.Tensor:
         malicious_update = -self.scale * benign_updates.mean(dim=0)

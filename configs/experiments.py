@@ -37,18 +37,20 @@ class FedAvgNonIIDALIE(Config):
     partition: str = "non_iid"
     attack_name: str | None = "alie"
     malicious_fractions: float = 0.2
-    alie_num_std: float = 1.0
+    alie_num_std: float = 0.2014
+    include_nnm: bool = False
 
 
 # alie optim
 @dataclass
 class FedAvgNonIIDALIEOptim(Config):
-    output_csv: str = "./results/fedavg_noniid_alie_optim.csv"
+    output_csv: str = "./results/temp/fedavg_noniid_alie_optim.csv"
     aggregator: str = "fed_avg"
     partition: str = "non_iid"
     attack_name: str | None = "alie_optim"
     malicious_fractions: float = 0.2
     alie_num_std: float = 1.0
+    include_nnm: bool = True
 
 
 # sign filp
@@ -320,6 +322,35 @@ class TrimmedMeanNonIIDMinSumNNM(Config):
     include_nnm: bool = True
 
 
+@dataclass
+class TrimmedMeanNonIIDAlieOptimNNM(Config):
+    output_csv: str = (
+        "./results/cifar10/classic_attack/trimmed_mean_noniid_alie_optim.csv"
+    )
+    num_clients: int = 30
+    clients_per_round: int = 30
+    attack_name: str | None = "alie_optim"
+    aggregator: str = "trimmed_mean"
+    partition: str = "non_iid"
+    malicious_fractions: float = 0.2
+    include_nnm: bool = True
+    communication_rounds: int = 20
+
+
+@dataclass
+class TrimmedMeanNonIIDAlieNNM(Config):
+    output_csv: str = "./results/temp/trimmed_mean_noniid_alie.csv"
+    num_clients: int = 30
+    clients_per_round: int = 30
+    attack_name: str | None = "alie"
+    aggregator: str = "trimmed_mean"
+    partition: str = "non_iid"
+    malicious_fractions: float = 0.2
+    include_nnm: bool = True
+    communication_rounds: int = 100
+    alie_num_std: float = 1.5
+
+
 # Prodigy
 @dataclass
 class ProdigyNonIID(Config):
@@ -465,6 +496,8 @@ CONFIGS = {
     "trimmed_mean_noniid_min_sum": TrimmedMeanNonIIDMinSum,
     "trimmed_mean_noniid_min_max_nnm": TrimmedMeanNonIIDMinMaxNNM,
     "trimmed_mean_noniid_min_sum_nnm": TrimmedMeanNonIIDMinSumNNM,
+    "trimmed_mean_noniid_alie_optim_nnm": TrimmedMeanNonIIDAlieOptimNNM,
+    "trimmed_mean_noniid_alie_nnm": TrimmedMeanNonIIDAlieNNM,
     "prodigy_noniid": ProdigyNonIID,
     "prodigy_noniid_ones": ProdigyNonIIDOnes,
     "prodigy_noniid_min_max": ProdigyNonIIDMinMax,
