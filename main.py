@@ -4,21 +4,14 @@ from functools import partial
 
 from configs.base import Config
 
-# from configs.mnist.clean_baseline_config import CONFIGS as CLEAN_BASELINE_CONFIGS
-# from configs.experiments import CONFIGS as EXPERIMENT_CONFIGS
-# from configs.mnist.other_attacks_config import CONFIGS as OTHER_ATTACK_CONFIGS
-# from configs.mnist.pca_sign_config import CONFIGS as PCA_SIGN_CONFIGS
-from configs.cifar10.archived.classic_attack import CONFIGS as CLASSIC_ATTACK_CONFIGS
 from configs.cifar10.no_attack import CONFIGS as NO_ATTACK_CONFIGS
 from configs.cifar10.other_attacks import CONFIGS as OTHER_ATTACKS_CONFIGS
-from configs.cifar10.archived.pca_attack import CONFIGS as PCA_ATTACKS_CONFIGS
 from configs.cifar10.pca_attacks import CONFIGS as GENERATED_PCA_ATTACKS_CONFIGS
 from configs.cifar10.extra_seeds import CONFIGS as EXTRA_SEEDS_CONFIGS
 
 from torch.utils.data import DataLoader
 import torch
 
-# from models.mnist_cnn import MNISTCNN
 from models.cifar10_net import CIFAR10Net, CIFAR10Simplified
 import random
 
@@ -50,14 +43,8 @@ from attacks import ALIE, ALIEOptim, OnesAttack, MinMax, MinSum, SignFlip
 from pca_subspace_attack import PCASubspaceAttack
 
 CONFIGS = {
-    # **EXPERIMENT_CONFIGS,
-    # **CLEAN_BASELINE_CONFIGS,
-    # **PCA_SIGN_CONFIGS,
-    # **OTHER_ATTACK_CONFIGS,
-    **CLASSIC_ATTACK_CONFIGS,
     **NO_ATTACK_CONFIGS,
     **OTHER_ATTACKS_CONFIGS,
-    **PCA_ATTACKS_CONFIGS,
     **GENERATED_PCA_ATTACKS_CONFIGS,
     **EXTRA_SEEDS_CONFIGS,
 }
